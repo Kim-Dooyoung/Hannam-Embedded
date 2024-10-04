@@ -1,0 +1,70 @@
+import re
+import google.generativeai as genai
+
+
+# API key configuration
+genai.configure(api_key='AIzaSyAMT5IsrEEgJwHj8m9sJ2PfqZcmlQhJR8s')
+
+def get_ingredients_from_user():
+    """사용자로부터 재료 목록을 입력 받습니다."""
+    while True:
+        ingredients_str = input("재료를 입력하세요 (쉼표로 구분): ")
+        ingredients = [ingredient.strip() for ingredient in ingredients_str.split(',')]
+        if all(ingredient for ingredient in ingredients):  # 빈 재료 입력 방지
+            return ingredients
+        else:
+            print("재료를 올바르게 입력해주세요. (예: 계란, 우유, 베이컨)")
+
+def generate_recipe(ingredients):
+    """Gemini API를 사용하여 재료를 기반으로 레시피를 생성합니다."""
+    prompt = f"""다음 재료들로 만들 수 있는 요리와 레시피를 알려줘: {', '.join(ingredients)}
+
+    ## 응답 형식
+
+    **요리:** {{요리이름}}
+
+    **추가 재료:** {{추가재료목록}}
+
+    **레시피:** {{레시피}}
+    """
+
+    try:
+        # Use 'chat' instead of 'generate' or 'generate_content'
+        response = genai.chat(
+            model='gemini-1.0-pro',
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,  # 창의성 조절 (0.0 ~ 1.0)
+            max_output_tokens=512  # 최대 출력 토큰 수
+        )
+        return response['messages'][0]['content']  # Accessing the generated content
+    except Exception as e:
+        print(f"Gemini API 호출 중 오류 발생: {e}")
+        return None
+
+def parse_recipe(recipe_text):
+    """Gemini API 응답에서 요리 이름, 추가 재료, 레시피를 추출합니다."""
+    try:
+        # 정규 표현식을 사용하여 정보 추출 (re.MULTILINE 플래그 사용)
+        food_name = re.search(r"요리:\s*(.+)", recipe_text, re.MULTILINE).group(1)
+        additional_ingredients = re.search(r"추가 재료:\s*(.+)", recipe_text, re.MULTILINE).group(1)
+        recipe = re.search(r"레시피:\s*(.+?)(?=\n\n|$)", recipe_text, re.MULTILINE | re.DOTALL).group(1)
+
+        return food_name, additional_ingredients, recipe
+    except AttributeError:
+        print("Gemini 응답에서 정보를 추출하는 데 실패했습니다.")
+        return None, None, None
+
+def print_recipe(food_name, additional_ingredients, recipe):
+    """추출된 레시피 정보를 사용자에게 출력합니다."""
+    if food_name and additional_ingredients and recipe:
+        print("\n## 레시피 추천 ##")
+        print(f"**요리:** {food_name}")
+        print(f"**추가 재료:** {additional_ingredients}")
+        print(f"**레시피:** {recipe}")
+
+if __name__ == "__main__":
+    ingredients = get_ingredients_from_user()
+    recipe_text = generate_recipe(ingredients)
+    if recipe_text:  # API 호출 성공 시에만 파싱 및 출력
+        food_name, additional_ingredients, recipe = parse_recipe(recipe_text)
+        print_recipe(food_name, additional_ingredients, recipe)
