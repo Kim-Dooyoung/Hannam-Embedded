@@ -1,0 +1,29 @@
+import pandas as pd
+
+# 레시피 데이터 (예시)
+recipes = pd.DataFrame({
+    'name': ['토마토 파스타', '양파 스프', '김치볶음밥'],
+    'ingredients': [['토마토', '파스타', '마늘'], ['양파', '닭육수', '후추'], ['김치', '밥', '계란']]
+})
+
+def get_recipes(ingredients):
+    # 입력 받은 재료를 포함하는 레시피 검색
+    matched_recipes = recipes[recipes['ingredients'].apply(lambda x: all(item in x for item in ingredients))]
+    return matched_recipes
+
+def recommend_recipes(ingredients):
+    # 정확한 매칭 후 유사 레시피 추천
+    matched_recipes = get_recipes(ingredients)
+    # 유사도 계산 로직 추가 (예: Jaccard 유사도)
+    return matched_recipes
+
+def suggest_ingredients(ingredients):
+    # 부족한 재료 제안
+    # 모든 레시피의 재료를 분석하여 자주 함께 사용되는 재료를 추천
+    # 사용자의 식성, 알레르기 정보 등을 고려하여 맞춤형 추천 가능
+
+if __name__ == '__main__':
+    user_ingredients = ['토마토', '양파']
+    result = recommend_recipes(user_ingredients)
+    print(result)
+    # 추가적으로 사용자 인터페이스 구현
