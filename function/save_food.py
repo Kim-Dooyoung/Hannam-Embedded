@@ -1,31 +1,36 @@
 from openpyxl import Workbook, load_workbook
 import os
 
-file_name = "임베디드_음식.xlsx"
 
-if os.path.exists(file_name):
-    # 파일이 존재하면 불러오기
-    wb = load_workbook(file_name)
-    ws = wb.active
-else:
-    # 파일이 없으면 새로 생성
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "음식"
+class FoodHandler:
+    def __init__(self, file_name):
+        self.file_name = file_name
+        self.wb = None
+        self.ws = None
 
-    column = ['번호', '음식']
-    ws.append(column)
+    def load_or_create(self):
+        if os.path.exists(self.file_name):
+            # 파일이 존재하면 불러오기
+            self.wb = load_workbook(self.file_name)
+            self.ws = self.wb.active
+        else:
+            # 파일이 없으면 새로 생성
+            self.wb = Workbook()
+            self.ws = self.wb.active
+            self.ws.title = "음식"
+            column = ['번호', '음식']
+            self.ws.append(column)
 
-# 재료 입력 (공백으로 구분된 여러 음식 입력 가능)
-Food = input("궁금한 음식을 입력하세요(입력 후 엔터 클릭): ")
+    def add_materials(self, foods):
+        # 단어 단위로 저장하기 위해 공백으로 분리
+        words = foods.split()
+        # 기존 데이터의 마지막 행부터 순차적으로 재료를 추가
+        existing_rows = self.ws.max_row
+        for idx, word in enumerate(words, start=existing_rows):
+            self.ws.append([idx, word])
 
-# 입력된 음식을 공백을 기준으로 나누어 리스트로 만듭니다.
-food_list = Food.split()
+    def save(self):
+        self.wb.save(self.file_name)
 
-existing_rows = ws.max_row
-
-for idx, food in enumerate(food_list, start=existing_rows):
-    ws.append([idx, food])
-
-# 엑셀 파일 저장
-wb.save(file_name)
+    def get_materials(self):
+        return self.foods

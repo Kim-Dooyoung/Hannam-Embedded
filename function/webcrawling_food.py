@@ -3,9 +3,19 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import time
+from save_food import FoodHandler
+
+file_name = "임베디드_음식.xlsx"
 
 # 검색어 입력 받기
 food_query = input("음식 입력: ")
+
+food_handler = FoodHandler(file_name)
+food_handler.load_or_create()
+
+food_handler.add_materials(food_query)
+
+food_handler.save()
 
 # 크롬 드라이버 설정
 chrome_options = Options()
