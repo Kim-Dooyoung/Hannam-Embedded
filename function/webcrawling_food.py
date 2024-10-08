@@ -25,7 +25,7 @@ def food_search_function():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    path = "C:\\Users\\user\\Desktop\\Embed\\chromedriver\\chromedriver-win64\\chromedriver.exe"
+    path = "C:\\Users\\user\\Desktop\\Embed2\\chromedriver\\chromedriver-win64\\chromedriver.exe"
     service = Service(path)
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
