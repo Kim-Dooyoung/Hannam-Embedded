@@ -1,0 +1,203 @@
+#include <LedControl.h>
+
+// LED Matrix 설정
+LedControl lc = LedControl(12, 11, 10, 1); // (DIN, CLK, CS, Number of Matrices)
+
+// 뱀 게임 관련 변수
+int snakeX[64] = {0};
+int snakeY[64] = {0};
+int snakeLength = 1;
+int foodX = -1;
+int foodY = -1;
+bool foodVisible = false;
+
+// 게임 시간 관련 변수
+unsigned long gameStartTime;
+unsigned long gameDuration = 60000; // 60초 게임
+unsigned long lastMoveTime;
+unsigned long moveInterval = 500; // 뱀이 이동하는 시간 간격
+int score = 0;
+int maxScore = 9; // 최대 점수 조건
+bool gameStarted = false; // 게임 시작 여부
+
+// 숫자 표시용 패턴 배열
+byte numbers[10][8] = {
+    {B00111100, B01000010, B01000010, B01000010, B01000010, B01000010, B00111100, B00000000}, // 0
+    {B00001000, B00011000, B00101000, B00001000, B00001000, B00001000, B00111110, B00000000}, // 1
+    {B00111100, B01000010, B00000010, B00011100, B00100000, B01000000, B01111110, B00000000}, // 2
+    {B00111100, B01000010, B00000010, B00011100, B00000010, B01000010, B00111100, B00000000}, // 3
+    {B00000100, B00001100, B00010100, B00100100, B01111110, B00000100, B00000100, B00000000}, // 4
+    {B01111110, B01000000, B01111100, B00000010, B00000010, B01000010, B00111100, B00000000}, // 5
+    {B00111100, B01000010, B01000000, B01111100, B01000010, B01000010, B00111100, B00000000}, // 6
+    {B01111110, B00000010, B00000100, B00001000, B00010000, B00010000, B00010000, B00000000}, // 7
+    {B00111100, B01000010, B01000010, B00111100, B01000010, B01000010, B00111100, B00000000}, // 8
+    {B00111100, B01000010, B01000010, B00111110, B00000010, B01000010, B00111100, B00000000}  // 9
+};
+
+// 조이스틱 핀 설정
+#define JOYSTICK_X A0
+#define JOYSTICK_Y A1
+#define JOYSTICK_BTN 2
+
+int joystickThreshold = 512; // 조이스틱 중앙값
+int dx = 1, dy = 0; // 초기 방향 (오른쪽)
+
+// 초기화
+void setup() {
+    pinMode(JOYSTICK_BTN, INPUT_PULLUP); // 조이스틱 버튼
+    lc.shutdown(0, false); // 모듈 활성화
+    lc.setIntensity(0, 8); // 밝기 설정
+    lc.clearDisplay(0);    // 디스플레이 초기화
+    displayStartMessage(); // 시작 메시지 표시
+}
+
+// 게임 루프
+void loop() {
+    if (!gameStarted) {
+        if (digitalRead(JOYSTICK_BTN) == LOW) {
+            delay(200); // 버튼 debounce
+            gameStarted = true;
+            resetGame();
+        }
+        return;
+    }
+
+    unsigned long currentTime = millis();
+
+    // 조이스틱 입력 업데이트
+    readJoystick();
+
+    if (currentTime - lastMoveTime >= moveInterval) {
+        moveSnake(dx, dy); // 조이스틱 입력 기반으로 이동
+        lastMoveTime = currentTime;
+
+        // 뱀이 음식을 먹었는지 확인
+        if (snakeX[0] == foodX && snakeY[0] == foodY) {
+            score++;
+            snakeLength++;
+            foodVisible = false;
+
+            // 최대 점수 도달 시 게임 종료
+            if (score >= maxScore) {
+                displayScoreOnMatrix();
+                delay(5000);
+                gameStarted = false; // 게임 종료 후 다시 시작 대기 상태로 전환
+                displayStartMessage();
+                return;
+            }
+        }
+
+        // 새로운 음식 생성
+        if (!foodVisible) {
+            spawnFood();
+        }
+
+        // 게임 시간 초과 확인
+        if (currentTime - gameStartTime >= gameDuration) {
+            displayScoreOnMatrix();
+            delay(5000);
+            gameStarted = false; // 게임 종료 후 다시 시작 대기 상태로 전환
+            displayStartMessage();
+        }
+    }
+
+    renderGame();
+}
+
+// 게임 리셋
+void resetGame() {
+    lc.clearDisplay(0); // 디스플레이 초기화
+    snakeX[0] = 0;
+    snakeY[0] = 0;
+    snakeLength = 1;
+    foodVisible = false;
+    score = 0;
+    gameStartTime = millis();
+    lastMoveTime = millis();
+
+    spawnFood();
+}
+
+// 뱀 이동
+void moveSnake(int dx, int dy) {
+    for (int i = snakeLength - 1; i > 0; i--) {
+        snakeX[i] = snakeX[i - 1];
+        snakeY[i] = snakeY[i - 1];
+    }
+
+    snakeX[0] += dx;
+    snakeY[0] += dy;
+
+    // 매트릭스 경계 처리
+    if (snakeX[0] < 0) snakeX[0] = 7;
+    if (snakeX[0] > 7) snakeX[0] = 0;
+    if (snakeY[0] < 0) snakeY[0] = 7;
+    if (snakeY[0] > 7) snakeY[0] = 0;
+}
+
+// 음식 생성
+void spawnFood() {
+    do {
+        foodX = random(0, 8);
+        foodY = random(0, 8);
+    } while (foodX == snakeX[0] && foodY == snakeY[0]); // 뱀과 겹치지 않도록 보장
+    foodVisible = true;
+}
+
+// 게임 화면 렌더링
+void renderGame() {
+    lc.clearDisplay(0);
+
+    // 뱀 그리기
+    for (int i = 0; i < snakeLength; i++) {
+        lc.setLed(0, snakeY[i], snakeX[i], true);
+    }
+
+    // 음식 그리기
+    if (foodVisible) {
+        lc.setLed(0, foodY, foodX, true);
+    }
+}
+
+// 점수 표시
+void displayScoreOnMatrix() {
+    lc.clearDisplay(0);
+    int displayScore = score;
+    int column = 0;
+
+    do {
+        int digit = displayScore % 10;
+        displayScore /= 10;
+
+        for (int row = 0; row < 8; row++) {
+            lc.setRow(0, row, numbers[digit][row] >> column);
+        }
+
+        column += 4; // 다음 숫자 위치 조정
+    } while (displayScore > 0);
+}
+
+// 조이스틱 입력 읽기
+void readJoystick() {
+    int xValue = analogRead(JOYSTICK_X);
+    int yValue = analogRead(JOYSTICK_Y);
+
+    if (xValue < joystickThreshold - 100) {
+        dx = -1; dy = 0; // 왼쪽
+    } else if (xValue > joystickThreshold + 100) {
+        dx = 1; dy = 0; // 오른쪽
+    } else if (yValue < joystickThreshold - 100) {
+        dx = 0; dy = -1; // 위쪽
+    } else if (yValue > joystickThreshold + 100) {
+        dx = 0; dy = 1; // 아래쪽
+    }
+}
+
+// 시작 메시지 표시
+void displayStartMessage() {
+    lc.clearDisplay(0);
+    for (int i = 0; i < 8; i++) {
+        lc.setRow(0, i, B00111100); // 간단한 대기 메시지 표시
+    }
+    delay(1000); // 시작 전 간단한 대기
+}
