@@ -27,7 +27,7 @@ void setup() {
 
 // 모터
   myservo.attach(2);
-  myservo.write(0);
+  myservo.write(120);
 }
 
 void loop() {
@@ -57,7 +57,7 @@ void loop() {
     // 모터 열기
     // n 초 후에 자동으로 닫히게
     Serial.println("Object detected. Opening servo...");
-    myservo.write(90); 
+    myservo.write(120); 
     delay(5000);       // 3초 대기
     Serial.println("Closing servo...");
     myservo.write(0);  
@@ -85,7 +85,7 @@ void loop() {
   Serial.print(distance_inner);
   Serial.println(" Cm");
 
-  if (distance_inner <= 5) {
+  if (distance_inner <= 10) {
     // LED 불빛 나오게
     Serial.println("LED ON");
     digitalWrite(LED_PIN, HIGH);
